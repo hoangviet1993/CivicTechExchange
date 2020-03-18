@@ -5,12 +5,18 @@ ENV PYTHONUNBUFFERED 1
 
 RUN mkdir /code
 WORKDIR /code
-COPY . /code/
 
-# S3 bucket and credentials for uploading files
-#AWS_ACCESS_KEY_ID=ASK
-#AWS_SECRET_ACCESS_KEY=ASK
-#S3_BUCKET=ASK
+# Install pip and yarn depedencies before copying directory to Docker image.
+COPY requirements.txt /code/requirements.txt
+RUN pip install -r requirements.txt
+
+# Copy files needed for yarn install.
+COPY package.json yarn.lock /code/
+RUN yarn --frozen-lockfile --link-duplicates --ignore-scripts
+# Permission issue with node-sass https://github.com/sass/node-sass/issues/1579
+RUN npm rebuild node-sass
+# Copy folders and files whitelisted by .dockerignore.
+COPY . /code/
 
 # Password for account used to send email
 ENV EMAIL_HOST_PASSWORD "betterDemocracyViaTechnology"
@@ -65,20 +71,8 @@ ENV APPLICATION_REMINDER_PERIODS '[2,7,-1]'
 # reminder comes two weeks before the volunteer's end date, and the second comes one week before
 ENV VOLUNTEER_RENEW_REMINDER_PERIODS '[7,7,-1]'
 
-# Sample email account configuration
-# EMAIL_SUPPORT_ACCT='{"host":"smtp.gmail.com","port":"587","display_name":"DemocracyLab Support","username":"support@democracylab.org","password":"SECRET","use_tls":"True","use_ssl":"False"}'
-# EMAIL_VOLUNTEER_ACCT='{"host":"smtp.gmail.com","port":"587","display_name":"DemocracyLab Volunteering","username":"volunteer@democracylab.org","password":"SECRET","use_tls":"True","use_ssl":"False"}'
-
 ENV S3_BUCKET "democracylab-marlok"
 ENV EMAIL_HOST_PASSWORD "betterDemocracyViaTechnology"
-
-# ONLY FOR USE IN PRODUCTION
-# HOTJAR_APPLICATION_ID=1097784
-
-# GOOGLE_PROPERTY_ID='UA-2879129-5'
-# GOOGLE_ADS_ID='AW-736663510'
-# GOOGLE_TAGS_ID='GTM-MBD5H4V'
-# GOOGLE_CONVERSION_IDS='[{'SignedUp':'bYM2CLDDlqMBENavot8C'}]'
 
 # DemocracyLab project ID (for use on About Us page)
 ENV DLAB_PROJECT_ID 4
@@ -96,7 +90,4 @@ ENV PRESS_LINKS '[{"date":"March 11, 2019","href":"https://www.washingtontechnol
 ENV GOOGLE_RECAPTCHA_SECRET_KEY "6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe"
 ENV GOOGLE_RECAPTCHA_SITE_KEY "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
 
-RUN pip install -r requirements.txt
-CMD python manage.py createcachetable
-CMD python manage.py migrate
 EXPOSE 8000
